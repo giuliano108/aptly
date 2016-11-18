@@ -190,8 +190,8 @@ type SnapshotCollection struct {
 // NewSnapshotCollection loads Snapshots from DB and makes up collection
 func NewSnapshotCollection(db database.Storage) *SnapshotCollection {
 	return &SnapshotCollection{
-		db:      db,
-		cache:   map[string]*Snapshot{},
+		db:    db,
+		cache: map[string]*Snapshot{},
 	}
 }
 
@@ -213,22 +213,20 @@ func (collection *SnapshotCollection) Add(snapshot *Snapshot) error {
 
 // Update stores updated information about snapshot in DB
 func (collection *SnapshotCollection) Update(snapshot *Snapshot) error {
-	transaction, err := collection.db.OpenTransaction()
-	if err != nil {
-		return err
-	}
-	defer transaction.Discard()
+	batch := collection.db.CreateBatch()
 
-	err = transaction.Put(snapshot.Key(), snapshot.Encode())
+	err := batch.Put(snapshot.Key(), snapshot.Encode())
 	if err != nil {
 		return err
 	}
 	if snapshot.packageRefs != nil {
-		if err = transaction.Put(snapshot.RefKey(), snapshot.packageRefs.Encode()); err != nil {
+		err = batch.Put(snapshot.RefKey(), snapshot.packageRefs.Encode())
+		if err != nil {
 			return err
 		}
 	}
-	return transaction.Commit()
+
+	return batch.Write()
 }
 
 // LoadComplete loads additional information about snapshot
@@ -400,15 +398,18 @@ func (collection *SnapshotCollection) Drop(snapshot *Snapshot) error {
 
 	delete(collection.cache, snapshot.UUID)
 
-	if err = transaction.Delete(snapshot.Key()); err != nil {
+	batch := collection.db.CreateBatch()
+	err = batch.Delete(snapshot.Key())
+	if err != nil {
 		return err
 	}
 
-	if err = transaction.Delete(snapshot.RefKey()); err != nil {
+	err = batch.Delete(snapshot.RefKey())
+	if err != nil {
 		return err
 	}
 
-	return transaction.Commit()
+	return batch.Write()
 }
 
 // Snapshot sorting methods
