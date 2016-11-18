@@ -7,7 +7,6 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aptly-dev/aptly/database"
@@ -184,7 +183,6 @@ func (s *Snapshot) Decode(input []byte) error {
 
 // SnapshotCollection does listing, updating/adding/deleting of Snapshots
 type SnapshotCollection struct {
-	*sync.RWMutex
 	db    database.Storage
 	cache map[string]*Snapshot
 }
@@ -192,7 +190,6 @@ type SnapshotCollection struct {
 // NewSnapshotCollection loads Snapshots from DB and makes up collection
 func NewSnapshotCollection(db database.Storage) *SnapshotCollection {
 	return &SnapshotCollection{
-		RWMutex: &sync.RWMutex{},
 		db:      db,
 		cache:   map[string]*Snapshot{},
 	}
