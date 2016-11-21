@@ -812,15 +812,9 @@ func (collection *RemoteRepoCollection) Add(repo *RemoteRepo) error {
 func (collection *RemoteRepoCollection) Update(repo *RemoteRepo) error {
 	batch := collection.db.CreateBatch()
 
-	err := batch.Put(repo.Key(), repo.Encode())
-	if err != nil {
-		return err
-	}
+	batch.Put(repo.Key(), repo.Encode())
 	if repo.packageRefs != nil {
-		err = batch.Put(repo.RefKey(), repo.packageRefs.Encode())
-		if err != nil {
-			return err
-		}
+		batch.Put(repo.RefKey(), repo.packageRefs.Encode())
 	}
 	return batch.Write()
 }
@@ -912,14 +906,7 @@ func (collection *RemoteRepoCollection) Drop(repo *RemoteRepo) error {
 	delete(collection.cache, repo.UUID)
 
 	batch := collection.db.CreateBatch()
-	err = batch.Delete(repo.Key())
-	if err != nil {
-		return err
-	}
-
-	err = batch.Delete(repo.RefKey())
-	if err != nil {
-		return err
-	}
+	batch.Delete(repo.Key())
+	batch.Delete(repo.RefKey())
 	return batch.Write()
 }
