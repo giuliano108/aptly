@@ -40,6 +40,8 @@ github.com/mattn/go-runewidth v0.0.2 h1:UnlwIPBGaTZfPQ6T1IGzPI0EkYAQmT9fAEJ/poFC
 github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/mattn/go-shellwords v1.0.2 h1:5FJ7APbaUYdUTxxP/XXltfy/mICrGqugUEClfnj+D3Y=
 github.com/mattn/go-shellwords v1.0.2/go.mod h1:3xCvwCdWdlDJUrvuMn7Wuy9eWs4pE8vqg+NOMyg4B2o=
+github.com/mattn/go-sqlite3 v1.14.8 h1:gDp86IdQsN/xWjIEmr9MF6o9mpksUgh0fu+9ByFxzIU=
+github.com/mattn/go-sqlite3 v1.14.8/go.mod h1:NyWgC/yNuGj7Q9rpYnZvas74GogHl5/Z4A/KQRfk6bU=
 github.com/mkrautz/goar v0.0.0-20150919110319-282caa8bd9da h1:Iu5QFXIMK/YrHJ0NgUnK0rqYTTyb0ldt/rqNenAj39U=
 github.com/mkrautz/goar v0.0.0-20150919110319-282caa8bd9da/go.mod h1:NfnmoBY0gGkr3/NmI+DP/UXbZvOCurCUYAzOdYJjlOc=
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f h1:y5//uYreIhSUg3J1GEMiLbxo1LJaP8RfCpH6pymGZus=
