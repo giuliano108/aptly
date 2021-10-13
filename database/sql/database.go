@@ -1,0 +1,24 @@
+package sql
+
+import (
+	"github.com/aptly-dev/aptly/database"
+	_ "github.com/mattn/go-sqlite3"
+)
+
+// NewDB creates new instance of DB, but doesn't open it (yet)
+func NewDB(driverName string, dataSourceName string) (database.Storage, error) {
+	return &storage{
+		driverName:     driverName,
+		dataSourceName: dataSourceName,
+	}, nil
+}
+
+// NewOpenDB creates new instance of DB and opens it
+func NewOpenDB(driverName string, dataSourceName string) (database.Storage, error) {
+	db, err := NewDB(driverName, dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return db, db.Open()
+}
