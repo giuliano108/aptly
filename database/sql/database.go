@@ -15,10 +15,10 @@ func NewDB(driverName string, dataSourceName string) (database.Storage, error) {
 
 // NewOpenDB creates new instance of DB and opens it
 func NewOpenDB(driverName string, dataSourceName string) (database.Storage, error) {
-	db, err := NewDB(driverName, dataSourceName)
+	s, err := NewDB(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
 	}
 
-	return db, db.Open()
+	return s, s.Open()
 }

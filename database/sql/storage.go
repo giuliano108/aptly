@@ -53,11 +53,13 @@ func (s *storage) CreateTemporary() (database.Storage, error) {
 }
 
 func (s *storage) Open() error {
-	panic("not implemented") // TODO: Implement
+	var err error
+	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
+	return err
 }
 
 func (s *storage) Close() error {
-	panic("not implemented") // TODO: Implement
+	return s.db.Close()
 }
 
 func (s *storage) CompactDB() error {

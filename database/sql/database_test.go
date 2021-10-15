@@ -1,4 +1,4 @@
-package sql_test
+package sql
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/aptly-dev/aptly/database"
-	"github.com/aptly-dev/aptly/database/sql"
 )
 
 func Test(t *testing.T) {
@@ -26,6 +25,21 @@ func (s *SQLSuite) SetUpTest(c *C) {
 
 	s.driverName = "sqlite3"
 	s.dataSourceName = ":memory:"
-	s.db, err = sql.NewOpenDB(s.driverName, s.dataSourceName)
+	s.db, err = NewOpenDB(s.driverName, s.dataSourceName)
 	c.Assert(err, IsNil)
+
+	internalDB := s.db.(*storage).db
+	_, err = internalDB.Exec("CREATE TABLE blah ( key BLOB NOT NULL, value BLOB NOT NULL);")
+	c.Assert(err, IsNil)
+	_, err = internalDB.Exec("CREATE UNIQUE INDEX idx_blah ON blah (key);")
+	c.Assert(err, IsNil)
+}
+
+func (s *SQLSuite) TearDownTest(c *C) {
+	err := s.db.Close()
+	c.Assert(err, IsNil)
+}
+
+func (s *SQLSuite) TestBlah(c *C) {
+	c.Check(true, Equals, true)
 }
