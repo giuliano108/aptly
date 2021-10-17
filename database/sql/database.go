@@ -6,16 +6,17 @@ import (
 )
 
 // NewDB creates new instance of DB, but doesn't open it (yet)
-func NewDB(driverName string, dataSourceName string) (database.Storage, error) {
+func NewDB(driverName string, dataSourceName string, tableName string) (database.Storage, error) {
 	return &storage{
 		driverName:     driverName,
 		dataSourceName: dataSourceName,
+		tableName:      tableName,
 	}, nil
 }
 
 // NewOpenDB creates new instance of DB and opens it
-func NewOpenDB(driverName string, dataSourceName string) (database.Storage, error) {
-	s, err := NewDB(driverName, dataSourceName)
+func NewOpenDB(driverName string, dataSourceName string, tableName string) (database.Storage, error) {
+	s, err := NewDB(driverName, dataSourceName, tableName)
 	if err != nil {
 		return nil, err
 	}

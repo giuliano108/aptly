@@ -1,4 +1,4 @@
-package sql
+package sql_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/aptly-dev/aptly/database"
+	"github.com/aptly-dev/aptly/database/sql"
 )
 
 func Test(t *testing.T) {
@@ -15,6 +16,7 @@ func Test(t *testing.T) {
 type SQLSuite struct {
 	driverName     string
 	dataSourceName string
+	tableName      string
 	db             database.Storage
 }
 
@@ -25,13 +27,8 @@ func (s *SQLSuite) SetUpTest(c *C) {
 
 	s.driverName = "sqlite3"
 	s.dataSourceName = ":memory:"
-	s.db, err = NewOpenDB(s.driverName, s.dataSourceName)
-	c.Assert(err, IsNil)
-
-	internalDB := s.db.(*storage).db
-	_, err = internalDB.Exec("CREATE TABLE blah ( key BLOB NOT NULL, value BLOB NOT NULL);")
-	c.Assert(err, IsNil)
-	_, err = internalDB.Exec("CREATE UNIQUE INDEX idx_blah ON blah (key);")
+	s.tableName = "testtable"
+	s.db, err = sql.NewOpenDB(s.driverName, s.dataSourceName, s.tableName)
 	c.Assert(err, IsNil)
 }
 
@@ -40,6 +37,19 @@ func (s *SQLSuite) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *SQLSuite) TestBlah(c *C) {
-	c.Check(true, Equals, true)
+func (s *SQLSuite) TestGetPut(c *C) {
+	var (
+		key   = []byte("key")
+		value = []byte("value")
+	)
+
+	_, err := s.db.Get(key)
+	c.Assert(err, ErrorMatches, "key not found")
+
+	err = s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	result, err := s.db.Get(key)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, value)
 }

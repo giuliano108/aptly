@@ -2,6 +2,7 @@ package sql
 
 import (
 	databasesql "database/sql"
+	"errors"
 
 	"github.com/aptly-dev/aptly/database"
 )
@@ -9,15 +10,24 @@ import (
 type storage struct {
 	driverName     string
 	dataSourceName string
+	tableName      string
 	db             *databasesql.DB
+	putStmt        *databasesql.Stmt
+	getStmt        *databasesql.Stmt
 }
 
 func (s *storage) Get(key []byte) ([]byte, error) {
-	panic("not implemented") // TODO: Implement
+	var value []byte
+	err := s.getStmt.QueryRow(key).Scan(&value)
+	if err == databasesql.ErrNoRows {
+		err = errors.New("key not found")
+	}
+	return value, err
 }
 
 func (s *storage) Put(key []byte, value []byte) error {
-	panic("not implemented") // TODO: Implement
+	_, err := s.putStmt.Exec(key, value)
+	return err
 }
 
 func (s *storage) Delete(key []byte) error {
@@ -55,6 +65,18 @@ func (s *storage) CreateTemporary() (database.Storage, error) {
 func (s *storage) Open() error {
 	var err error
 	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB );")
+	if err != nil {
+		return err
+	}
+	s.putStmt, err = s.db.Prepare("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
+	if err != nil {
+		return err
+	}
+	s.getStmt, err = s.db.Prepare("SELECT value FROM " + s.tableName + " WHERE key = ?")
 	return err
 }
 
