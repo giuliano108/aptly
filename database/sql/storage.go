@@ -11,6 +11,7 @@ type storage struct {
 	driverName      string
 	dataSourceName  string
 	tableName       string
+	escapeCharacter []byte
 	db              *databasesql.DB
 	putStmt         *databasesql.Stmt
 	getStmt         *databasesql.Stmt
@@ -37,10 +38,17 @@ func (s *storage) Delete(key []byte) error {
 
 // HasPrefix checks whether it can find any key with given prefix and returns true if one exists
 func (s *storage) HasPrefix(prefix []byte) bool {
-	//	iterator := s.db.NewIterator(nil, nil)
-	//	defer iterator.Release()
-	//	return iterator.Seek(prefix) && bytes.HasPrefix(iterator.Key(), prefix)
-	panic("not implemented") // TODO: Implement
+	var count int
+	err := s.countPrefixStmt.QueryRow(PrefixPattern(prefix, s.escapeCharacter)).Scan(&count)
+	if err != nil {
+		// PrefixReader.HasPrefix doesn't want us to do real error handling
+		return false
+	}
+	if count > 0 {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (s *storage) ProcessByPrefix(prefix []byte, proc database.StorageProcessor) error {
@@ -70,6 +78,7 @@ func (s *storage) CreateTemporary() (database.Storage, error) {
 func (s *storage) Open() error {
 	var err error
 	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
+	s.escapeCharacter = []byte("\\")
 	if err != nil {
 		return err
 	}
@@ -85,7 +94,7 @@ func (s *storage) Open() error {
 	if err != nil {
 		return err
 	}
-	s.countPrefixStmt, err = s.db.Prepare("SELECT COUNT (key) FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '\\'")
+	s.countPrefixStmt, err = s.db.Prepare("SELECT COUNT (key) as count FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'")
 	return err
 }
 

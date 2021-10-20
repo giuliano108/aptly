@@ -54,14 +54,6 @@ func (s *SQLSuite) TestGetPut(c *C) {
 	c.Assert(result, DeepEquals, value)
 }
 
-func (s *SQLSuite) TestEscapeLikeWildcardCharacters(c *C) {
-	c.Check(sql.EscapeLikeWildcardCharacters([]byte("foo"), []byte("\\")), DeepEquals, []byte("foo"))
-	c.Check(sql.EscapeLikeWildcardCharacters([]byte("foo%"), []byte("\\")), DeepEquals, []byte("foo\\%"))
-	c.Check(sql.EscapeLikeWildcardCharacters([]byte("f_o%"), []byte("\\")), DeepEquals, []byte("f\\_o\\%"))
-	c.Check(sql.EscapeLikeWildcardCharacters([]byte("\\%foo%"), []byte("\\")), DeepEquals, []byte("\\\\\\%foo\\%"))
-}
-
-/*
 func (s *SQLSuite) TestHasPrefix(c *C) {
 	c.Check(s.db.HasPrefix([]byte(nil)), Equals, false)
 	c.Check(s.db.HasPrefix([]byte{0x80}), Equals, false)
@@ -72,7 +64,13 @@ func (s *SQLSuite) TestHasPrefix(c *C) {
 	c.Check(s.db.HasPrefix([]byte{0x80}), Equals, true)
 	c.Check(s.db.HasPrefix([]byte{0x79}), Equals, false)
 }
-*/
+
+func (s *SQLSuite) TestEscapeLikeWildcardCharacters(c *C) {
+	c.Check(sql.EscapeLikeWildcardCharacters([]byte("foo"), []byte("\\")), DeepEquals, []byte("foo"))
+	c.Check(sql.EscapeLikeWildcardCharacters([]byte("foo%"), []byte("\\")), DeepEquals, []byte("foo\\%"))
+	c.Check(sql.EscapeLikeWildcardCharacters([]byte("f_o%"), []byte("\\")), DeepEquals, []byte("f\\_o\\%"))
+	c.Check(sql.EscapeLikeWildcardCharacters([]byte("\\%foo%"), []byte("\\")), DeepEquals, []byte("\\\\\\%foo\\%"))
+}
 
 /*
 // Test the quirks of using a SQL DB as a KV store.

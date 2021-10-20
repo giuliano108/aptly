@@ -19,3 +19,9 @@ func EscapeLikeWildcardCharacters(pattern []byte, escapeCharacter []byte) []byte
 	s = escapeLikeCharacter(s, []byte("_"), escapeCharacter)
 	return s
 }
+
+// Return a prefix pattern that can be used with LIKE.
+// The pattern will match text/blob fields starting with `prefix`.
+func PrefixPattern(prefix []byte, escapeCharacter []byte) []byte {
+	return append(EscapeLikeWildcardCharacters(prefix, escapeCharacter), []byte("%")[0])
+}
