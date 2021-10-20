@@ -8,12 +8,13 @@ import (
 )
 
 type storage struct {
-	driverName     string
-	dataSourceName string
-	tableName      string
-	db             *databasesql.DB
-	putStmt        *databasesql.Stmt
-	getStmt        *databasesql.Stmt
+	driverName      string
+	dataSourceName  string
+	tableName       string
+	db              *databasesql.DB
+	putStmt         *databasesql.Stmt
+	getStmt         *databasesql.Stmt
+	countPrefixStmt *databasesql.Stmt
 }
 
 func (s *storage) Get(key []byte) ([]byte, error) {
@@ -34,7 +35,11 @@ func (s *storage) Delete(key []byte) error {
 	panic("not implemented") // TODO: Implement
 }
 
+// HasPrefix checks whether it can find any key with given prefix and returns true if one exists
 func (s *storage) HasPrefix(prefix []byte) bool {
+	//	iterator := s.db.NewIterator(nil, nil)
+	//	defer iterator.Release()
+	//	return iterator.Seek(prefix) && bytes.HasPrefix(iterator.Key(), prefix)
 	panic("not implemented") // TODO: Implement
 }
 
@@ -68,7 +73,7 @@ func (s *storage) Open() error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB );")
+	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )")
 	if err != nil {
 		return err
 	}
@@ -77,6 +82,10 @@ func (s *storage) Open() error {
 		return err
 	}
 	s.getStmt, err = s.db.Prepare("SELECT value FROM " + s.tableName + " WHERE key = ?")
+	if err != nil {
+		return err
+	}
+	s.countPrefixStmt, err = s.db.Prepare("SELECT COUNT (key) FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '\\'")
 	return err
 }
 
