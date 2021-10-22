@@ -19,6 +19,7 @@ type storage struct {
 	fetchPrefixStmt   *databasesql.Stmt
 	keysPrefixStmt    *databasesql.Stmt
 	processPrefixStmt *databasesql.Stmt
+	deleteStmt        *databasesql.Stmt
 }
 
 func (s *storage) Get(key []byte) ([]byte, error) {
@@ -36,7 +37,8 @@ func (s *storage) Put(key []byte, value []byte) error {
 }
 
 func (s *storage) Delete(key []byte) error {
-	panic("not implemented") // TODO: Implement
+	_, err := s.deleteStmt.Exec(key)
+	return err
 }
 
 // FetchByPrefix returns all values with keys that start with prefix
@@ -166,6 +168,10 @@ func (s *storage) Open() error {
 		return err
 	}
 	s.processPrefixStmt, err = s.db.Prepare("SELECT key, value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
+	if err != nil {
+		return err
+	}
+	s.deleteStmt, err = s.db.Prepare("DELETE FROM " + s.tableName + " WHERE key = ?")
 	return err
 }
 
