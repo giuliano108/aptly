@@ -141,6 +141,7 @@ func (s *storage) Open() error {
 		return err
 	}
 	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )")
+	_, err = s.db.Exec("PRAGMA case_sensitive_like = true")
 	if err != nil {
 		return err
 	}

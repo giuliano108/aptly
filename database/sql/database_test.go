@@ -37,6 +37,10 @@ func (s *SQLSuite) TearDownTest(c *C) {
 	c.Assert(err, IsNil)
 }
 
+//
+// These tests are copied 1:1 from goleveldb_test
+//
+
 func (s *SQLSuite) TestGetPut(c *C) {
 	var (
 		key   = []byte("key")
@@ -106,10 +110,22 @@ func (s *SQLSuite) TestHasPrefix(c *C) {
 	c.Check(s.db.HasPrefix([]byte{0x79}), Equals, false)
 }
 
-////
-////
-////
-////
+//
+// SQL specific tests
+//
+
+// Aptly uses LevelDB's default comparator, which results in keys being ordered lexicographically.
+// See: https://github.com/google/leveldb/blob/master/doc/index.md#comparators
+// This property is already exercised in `TestByPrefix`, but we also do it here explicitly. It is
+// achieved using an `ORDER BY` SQL caluse.
+func (s *SQLSuite) TestOrdering(c *C) {
+	c.Check(s.db.FetchByPrefix([]byte{0xF0}), DeepEquals, [][]byte{})
+
+	s.db.Put([]byte{0xF0, 0x01}, []byte{0x01})
+	s.db.Put([]byte{0xF0, 0x03}, []byte{0x03})
+	s.db.Put([]byte{0xF0, 0x02}, []byte{0x02})
+	c.Check(s.db.FetchByPrefix([]byte{0xF0}), DeepEquals, [][]byte{{0x01}, {0x02}, {0x03}})
+}
 
 func (s *SQLSuite) TestEscapeLikeWildcardCharacters(c *C) {
 	c.Check(sql.EscapeLikeWildcardCharacters([]byte("foo"), []byte("\\")), DeepEquals, []byte("foo"))
@@ -118,31 +134,25 @@ func (s *SQLSuite) TestEscapeLikeWildcardCharacters(c *C) {
 	c.Check(sql.EscapeLikeWildcardCharacters([]byte("\\%foo%"), []byte("\\")), DeepEquals, []byte("\\\\\\%foo\\%"))
 }
 
-/*
-// Test the quirks of using a SQL DB as a KV store.
-// These tests run against their own DB table.
-func (s *SQLSuite) TestSQLAsAKVStore(c *C) {
+// Different SQL DBs have different ways to make `LIKE 'prefix%'` queries
+// case sensitive (by default, they are not).
+func (s *SQLSuite) TestCaseSensitivity(c *C) {
 	var (
 		err   error
 		value = []byte("value")
 	)
 
-	db, err := sql.NewOpenDB(s.driverName, s.dataSourceName, "testtablequirks")
 	c.Assert(err, IsNil)
 
 	// Put/Get are case sensitive.
-	err = s.db.Put([]byte("UPPERCASE"), value)
+	err = s.db.Put([]byte("SOMEKEY"), value)
 	c.Assert(err, IsNil)
 
-	_, err = s.db.Get([]byte("uppercase"))
+	_, err = s.db.Get([]byte("somekey"))
 	c.Assert(err, ErrorMatches, "key not found")
 
 	// Prefixed operations are case sensitive too.
-	// Different SQL DBs have different ways to make `LIKE 'prefix%'` queries
-	// case sensitive (by default, they are not).
-
-	// Keys containing SQL `LIKE` wildcard characters are handled correctly
-
-	db.Close()
+	_ = s.db.Put([]byte("KEYUPPER"), value)
+	_ = s.db.Put([]byte("keylower"), value)
+	c.Check(s.db.KeysByPrefix([]byte("KEY")), DeepEquals, [][]byte{[]byte("KEYUPPER")})
 }
-*/
