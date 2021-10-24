@@ -8,23 +8,17 @@ import (
 )
 
 type storage struct {
-	driverName        string
-	dataSourceName    string
-	tableName         string
-	escapeCharacter   []byte
-	db                *databasesql.DB
-	putStmt           *databasesql.Stmt
-	getStmt           *databasesql.Stmt
-	countPrefixStmt   *databasesql.Stmt
-	fetchPrefixStmt   *databasesql.Stmt
-	keysPrefixStmt    *databasesql.Stmt
-	processPrefixStmt *databasesql.Stmt
-	deleteStmt        *databasesql.Stmt
+	driverName      string
+	dataSourceName  string
+	tableName       string
+	escapeCharacter []byte
+	db              *databasesql.DB
+	stmts           statements
 }
 
 func (s *storage) Get(key []byte) ([]byte, error) {
 	var value []byte
-	err := s.getStmt.QueryRow(key).Scan(&value)
+	err := s.stmts.Get.Prepared.QueryRow(key).Scan(&value)
 	if err == databasesql.ErrNoRows {
 		err = errors.New("key not found")
 	}
@@ -32,19 +26,19 @@ func (s *storage) Get(key []byte) ([]byte, error) {
 }
 
 func (s *storage) Put(key []byte, value []byte) error {
-	_, err := s.putStmt.Exec(key, value)
+	_, err := s.stmts.Put.Prepared.Exec(key, value)
 	return err
 }
 
 func (s *storage) Delete(key []byte) error {
-	_, err := s.deleteStmt.Exec(key)
+	_, err := s.stmts.Delete.Prepared.Exec(key)
 	return err
 }
 
 // FetchByPrefix returns all values with keys that start with prefix
 func (s *storage) FetchByPrefix(prefix []byte) [][]byte {
 	values := make([][]byte, 0, 20)
-	rows, err := s.fetchPrefixStmt.Query(PrefixPattern(prefix, s.escapeCharacter))
+	rows, err := s.stmts.FetchPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
 		panic("error")
 	}
@@ -65,7 +59,7 @@ func (s *storage) FetchByPrefix(prefix []byte) [][]byte {
 // HasPrefix checks whether it can find any key with given prefix and returns true if one exists
 func (s *storage) HasPrefix(prefix []byte) bool {
 	var count int
-	err := s.countPrefixStmt.QueryRow(PrefixPattern(prefix, s.escapeCharacter)).Scan(&count)
+	err := s.stmts.CountPrefix.Prepared.QueryRow(PrefixPattern(prefix, s.escapeCharacter)).Scan(&count)
 	if err != nil {
 		panic("error")
 	}
@@ -79,7 +73,7 @@ func (s *storage) HasPrefix(prefix []byte) bool {
 // ProcessByPrefix iterates through all entries where key starts with prefix and calls
 // StorageProcessor on key value pair
 func (s *storage) ProcessByPrefix(prefix []byte, proc database.StorageProcessor) error {
-	rows, err := s.processPrefixStmt.Query(PrefixPattern(prefix, s.escapeCharacter))
+	rows, err := s.stmts.ProcessPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
 		panic("error")
 	}
@@ -105,7 +99,7 @@ func (s *storage) ProcessByPrefix(prefix []byte, proc database.StorageProcessor)
 // KeysByPrefix returns all keys that start with prefix
 func (s *storage) KeysByPrefix(prefix []byte) [][]byte {
 	keys := make([][]byte, 0, 20)
-	rows, err := s.keysPrefixStmt.Query(PrefixPattern(prefix, s.escapeCharacter))
+	rows, err := s.stmts.KeysPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
 		panic("error")
 	}
@@ -128,7 +122,12 @@ func (s *storage) CreateBatch() database.Batch {
 }
 
 func (s *storage) OpenTransaction() (database.Transaction, error) {
-	panic("not implemented") // TODO: Implement
+	t, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	return &transaction{t: t, stmts: s.stmts}, nil
 }
 
 func (s *storage) CreateTemporary() (database.Storage, error) {
@@ -144,35 +143,47 @@ func (s *storage) Open() error {
 	}
 	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )")
 	_, err = s.db.Exec("PRAGMA case_sensitive_like = true")
+
+	putStmt, err := s.NewStatement("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
 	if err != nil {
 		return err
 	}
-	s.putStmt, err = s.db.Prepare("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
+	getStmt, err := s.NewStatement("SELECT value FROM " + s.tableName + " WHERE key = ?")
 	if err != nil {
 		return err
 	}
-	s.getStmt, err = s.db.Prepare("SELECT value FROM " + s.tableName + " WHERE key = ?")
+	countPrefixStmt, err := s.NewStatement("SELECT COUNT (key) as count FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'")
 	if err != nil {
 		return err
 	}
-	s.countPrefixStmt, err = s.db.Prepare("SELECT COUNT (key) as count FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'")
+	fetchPrefixStmt, err := s.NewStatement("SELECT value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
 	if err != nil {
 		return err
 	}
-	s.fetchPrefixStmt, err = s.db.Prepare("SELECT value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
+	keysPrefixStmt, err := s.NewStatement("SELECT key FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
 	if err != nil {
 		return err
 	}
-	s.keysPrefixStmt, err = s.db.Prepare("SELECT key FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
+	processPrefixStmt, err := s.NewStatement("SELECT key, value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
 	if err != nil {
 		return err
 	}
-	s.processPrefixStmt, err = s.db.Prepare("SELECT key, value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
+	deleteStmt, err := s.NewStatement("DELETE FROM " + s.tableName + " WHERE key = ?")
 	if err != nil {
 		return err
 	}
-	s.deleteStmt, err = s.db.Prepare("DELETE FROM " + s.tableName + " WHERE key = ?")
-	return err
+
+	s.stmts = statements{
+		Put:           putStmt,
+		Get:           getStmt,
+		CountPrefix:   countPrefixStmt,
+		FetchPrefix:   fetchPrefixStmt,
+		KeysPrefix:    keysPrefixStmt,
+		ProcessPrefix: processPrefixStmt,
+		Delete:        deleteStmt,
+	}
+
+	return nil
 }
 
 func (s *storage) Close() error {
@@ -185,6 +196,15 @@ func (s *storage) CompactDB() error {
 
 func (s *storage) Drop() error {
 	panic("not implemented") // TODO: Implement
+}
+
+func (s *storage) NewStatement(stmt string) (*statement, error) {
+	prepared, err := s.db.Prepare(stmt)
+	if err != nil {
+		return nil, err
+	} else {
+		return &statement{Stmt: stmt, Prepared: prepared}, nil
+	}
 }
 
 // Check interface

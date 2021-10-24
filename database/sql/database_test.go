@@ -1,6 +1,7 @@
 package sql_test
 
 import (
+	"fmt"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -14,6 +15,7 @@ func Test(t *testing.T) {
 }
 
 type SQLSuite struct {
+	path           string
 	driverName     string
 	dataSourceName string
 	tableName      string
@@ -25,8 +27,9 @@ var _ = Suite(&SQLSuite{})
 func (s *SQLSuite) SetUpTest(c *C) {
 	var err error
 
+	s.path = c.MkDir()
 	s.driverName = "sqlite3"
-	s.dataSourceName = ":memory:"
+	s.dataSourceName = fmt.Sprintf("file:%s/sql_test.db", s.path)
 	s.tableName = "testtable"
 	s.db, err = sql.NewOpenDB(s.driverName, s.dataSourceName, s.tableName)
 	c.Assert(err, IsNil)
@@ -127,6 +130,47 @@ func (s *SQLSuite) TestHasPrefix(c *C) {
 	c.Check(s.db.HasPrefix([]byte(nil)), Equals, true)
 	c.Check(s.db.HasPrefix([]byte{0x80}), Equals, true)
 	c.Check(s.db.HasPrefix([]byte{0x79}), Equals, false)
+}
+
+func (s *SQLSuite) TestTransactionCommit(c *C) {
+	var (
+		key    = []byte("key")
+		key2   = []byte("key2")
+		value  = []byte("value")
+		value2 = []byte("value2")
+	)
+
+	err := s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	transaction, err := s.db.OpenTransaction()
+	c.Assert(err, IsNil)
+	transaction.Put(key2, value2)
+	transaction.Delete(key)
+
+	v, err := s.db.Get(key)
+	c.Check(err, IsNil)
+	c.Check(v, DeepEquals, value)
+
+	_, err = s.db.Get(key2)
+	c.Check(err, ErrorMatches, "key not found")
+
+	v2, err := transaction.Get(key2)
+	c.Check(err, IsNil)
+	c.Check(v2, DeepEquals, value2)
+
+	_, err = transaction.Get(key)
+	c.Check(err, ErrorMatches, "key not found")
+
+	err = transaction.Commit()
+	c.Check(err, IsNil)
+
+	v2, err = s.db.Get(key2)
+	c.Check(err, IsNil)
+	c.Check(v2, DeepEquals, value2)
+
+	_, err = s.db.Get(key)
+	c.Check(err, ErrorMatches, "key not found")
 }
 
 //
