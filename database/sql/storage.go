@@ -118,7 +118,11 @@ func (s *storage) KeysByPrefix(prefix []byte) [][]byte {
 }
 
 func (s *storage) CreateBatch() database.Batch {
-	panic("not implemented") // TODO: Implement
+	t, err := s.db.Begin()
+	if err != nil {
+		panic("error")
+	}
+	return &batch{t: &transaction{t: t, stmts: s.stmts}}
 }
 
 func (s *storage) OpenTransaction() (database.Transaction, error) {

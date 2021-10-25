@@ -132,6 +132,39 @@ func (s *SQLSuite) TestHasPrefix(c *C) {
 	c.Check(s.db.HasPrefix([]byte{0x79}), Equals, false)
 }
 
+func (s *SQLSuite) TestBatch(c *C) {
+	var (
+		key    = []byte("key")
+		key2   = []byte("key2")
+		value  = []byte("value")
+		value2 = []byte("value2")
+	)
+
+	err := s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	batch := s.db.CreateBatch()
+	batch.Put(key2, value2)
+	batch.Delete(key)
+
+	v, err := s.db.Get(key)
+	c.Check(err, IsNil)
+	c.Check(v, DeepEquals, value)
+
+	_, err = s.db.Get(key2)
+	c.Check(err, ErrorMatches, "key not found")
+
+	err = batch.Write()
+	c.Check(err, IsNil)
+
+	v2, err := s.db.Get(key2)
+	c.Check(err, IsNil)
+	c.Check(v2, DeepEquals, value2)
+
+	_, err = s.db.Get(key)
+	c.Check(err, ErrorMatches, "key not found")
+}
+
 func (s *SQLSuite) TestTransactionCommit(c *C) {
 	var (
 		key    = []byte("key")
@@ -218,4 +251,6 @@ func (s *SQLSuite) TestCaseSensitivity(c *C) {
 	_ = s.db.Put([]byte("KEYUPPER"), value)
 	_ = s.db.Put([]byte("keylower"), value)
 	c.Check(s.db.KeysByPrefix([]byte("KEY")), DeepEquals, [][]byte{[]byte("KEYUPPER")})
+
+	// TODO: need to test case sensitivity in transactions too (pragma might need to be repeated after a BEGIN?)
 }
