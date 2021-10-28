@@ -230,6 +230,46 @@ func (s *SQLSuite) TestTransactionCommit(c *C) {
 	c.Check(err, ErrorMatches, "key not found")
 }
 
+func (s *SQLSuite) TestTransactionDiscard(c *C) {
+	var (
+		key    = []byte("key")
+		key2   = []byte("key2")
+		value  = []byte("value")
+		value2 = []byte("value2")
+	)
+
+	err := s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	transaction, err := s.db.OpenTransaction()
+	c.Assert(err, IsNil)
+	transaction.Put(key2, value2)
+	transaction.Delete(key)
+
+	v, err := s.db.Get(key)
+	c.Check(err, IsNil)
+	c.Check(v, DeepEquals, value)
+
+	_, err = s.db.Get(key2)
+	c.Check(err, ErrorMatches, "key not found")
+
+	v2, err := transaction.Get(key2)
+	c.Check(err, IsNil)
+	c.Check(v2, DeepEquals, value2)
+
+	_, err = transaction.Get(key)
+	c.Check(err, ErrorMatches, "key not found")
+
+	transaction.Discard()
+
+	v, err = s.db.Get(key)
+	c.Check(err, IsNil)
+	c.Check(v, DeepEquals, value)
+
+	_, err = s.db.Get(key2)
+	c.Check(err, ErrorMatches, "key not found")
+}
+
 func (s *SQLSuite) TestCompactDB(c *C) {
 	s.db.Put([]byte{0x80, 0x01}, []byte{0x01})
 	s.db.Put([]byte{0x80, 0x03}, []byte{0x03})
