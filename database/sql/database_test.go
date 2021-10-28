@@ -7,6 +7,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/aptly-dev/aptly/database"
+	"github.com/aptly-dev/aptly/database/goleveldb"
 	"github.com/aptly-dev/aptly/database/sql"
 )
 
@@ -43,6 +44,29 @@ func (s *SQLSuite) TearDownTest(c *C) {
 //
 // These tests are copied 1:1 from goleveldb_test
 //
+
+func (s *SQLSuite) TestRecoverDB(c *C) {
+	var (
+		key   = []byte("key")
+		value = []byte("value")
+	)
+
+	err := s.db.Put(key, value)
+	c.Check(err, IsNil)
+
+	err = s.db.Close()
+	c.Check(err, IsNil)
+
+	err = goleveldb.RecoverDB(s.path)
+	c.Check(err, IsNil)
+
+	s.db, err = sql.NewOpenDB(s.driverName, s.dataSourceName, s.tableName)
+	c.Check(err, IsNil)
+
+	result, err := s.db.Get(key)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, value)
+}
 
 func (s *SQLSuite) TestGetPut(c *C) {
 	var (

@@ -23,3 +23,9 @@ func NewOpenDB(driverName string, dataSourceName string, tableName string) (data
 
 	return s, s.Open()
 }
+
+// Does nothing, we can't "recover" a SQL database via a library call
+func RecoverDB(path string) error {
+	//TODO: log that this is a noop
+	return nil
+}
