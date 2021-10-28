@@ -194,8 +194,10 @@ func (s *storage) Close() error {
 	return s.db.Close()
 }
 
+// Does nothing, we can't "compact" a SQL database via a library call
 func (s *storage) CompactDB() error {
-	panic("not implemented") // TODO: Implement
+	//TODO: log that this is a noop
+	return nil
 }
 
 func (s *storage) Drop() error {

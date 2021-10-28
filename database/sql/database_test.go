@@ -230,6 +230,14 @@ func (s *SQLSuite) TestTransactionCommit(c *C) {
 	c.Check(err, ErrorMatches, "key not found")
 }
 
+func (s *SQLSuite) TestCompactDB(c *C) {
+	s.db.Put([]byte{0x80, 0x01}, []byte{0x01})
+	s.db.Put([]byte{0x80, 0x03}, []byte{0x03})
+	s.db.Put([]byte{0x80, 0x02}, []byte{0x02})
+
+	c.Check(s.db.CompactDB(), IsNil)
+}
+
 //
 // SQL specific tests
 //
