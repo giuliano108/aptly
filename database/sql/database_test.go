@@ -85,6 +85,7 @@ func (s *SQLSuite) TestGetPut(c *C) {
 	c.Assert(result, DeepEquals, value)
 }
 
+/*
 func (s *SQLSuite) TestTemporaryDelete(c *C) {
 	var (
 		key   = []byte("key")
@@ -107,6 +108,7 @@ func (s *SQLSuite) TestTemporaryDelete(c *C) {
 	c.Assert(temp.Close(), IsNil)
 	c.Assert(temp.Drop(), IsNil)
 }
+*/
 
 func (s *SQLSuite) TestDelete(c *C) {
 	var (

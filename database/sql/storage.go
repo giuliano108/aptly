@@ -157,6 +157,35 @@ func (s *storage) CreateTemporary() (database.Storage, error) {
 	return &sCopy, nil
 }
 
+func (s *storage) massPrepare() error {
+	var err error
+	for _, stmt := range []*statement{
+		s.stmts.Put,
+		s.stmts.Get,
+		s.stmts.CountPrefix,
+		s.stmts.FetchPrefix,
+		s.stmts.KeysPrefix,
+		s.stmts.ProcessPrefix,
+		s.stmts.Delete,
+	} {
+		stmt.Prepared, err = s.db.Prepare(stmt.Stmt)
+		if err != nil {
+			break
+		}
+	}
+	return err
+}
+
+func (s *storage) genStatements(tableName string) {
+	s.stmts.Put = &statement{Stmt: "INSERT INTO " + tableName + " (key, value) VALUES (?, ?)"}
+	s.stmts.Get = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE key = ?"}
+	s.stmts.CountPrefix = &statement{Stmt: "SELECT COUNT (key) as count FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'"}
+	s.stmts.FetchPrefix = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+	s.stmts.KeysPrefix = &statement{Stmt: "SELECT key FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+	s.stmts.ProcessPrefix = &statement{Stmt: "SELECT key, value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+	s.stmts.Delete = &statement{Stmt: "DELETE FROM " + tableName + " WHERE key = ?"}
+}
+
 func (s *storage) Open() error {
 	var err error
 	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
@@ -182,46 +211,14 @@ func (s *storage) Open() error {
 		}
 	}
 
-	putStmt, err := s.NewStatement("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
-	if err != nil {
-		return err
-	}
-	getStmt, err := s.NewStatement("SELECT value FROM " + s.tableName + " WHERE key = ?")
-	if err != nil {
-		return err
-	}
-	countPrefixStmt, err := s.NewStatement("SELECT COUNT (key) as count FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'")
-	if err != nil {
-		return err
-	}
-	fetchPrefixStmt, err := s.NewStatement("SELECT value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
-	if err != nil {
-		return err
-	}
-	keysPrefixStmt, err := s.NewStatement("SELECT key FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
-	if err != nil {
-		return err
-	}
-	processPrefixStmt, err := s.NewStatement("SELECT key, value FROM " + s.tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key")
-	if err != nil {
-		return err
-	}
-	deleteStmt, err := s.NewStatement("DELETE FROM " + s.tableName + " WHERE key = ?")
+	s.genStatements(s.tableName)
+	err = s.massPrepare()
 	if err != nil {
 		return err
 	}
 
-	s.stmts = statements{
-		CreateTableFunc: createTableFunc,
-		Pragma:          pragmaStmt,
-		Put:             putStmt,
-		Get:             getStmt,
-		CountPrefix:     countPrefixStmt,
-		FetchPrefix:     fetchPrefixStmt,
-		KeysPrefix:      keysPrefixStmt,
-		ProcessPrefix:   processPrefixStmt,
-		Delete:          deleteStmt,
-	}
+	s.stmts.CreateTableFunc = createTableFunc
+	s.stmts.Pragma = pragmaStmt
 
 	return nil
 }
@@ -238,15 +235,6 @@ func (s *storage) CompactDB() error {
 
 func (s *storage) Drop() error {
 	panic("not implemented") // TODO: Implement
-}
-
-func (s *storage) NewStatement(stmt string) (*statement, error) {
-	prepared, err := s.db.Prepare(stmt)
-	if err != nil {
-		return nil, err
-	} else {
-		return &statement{Stmt: stmt, Prepared: prepared}, nil
-	}
 }
 
 // Check interface
