@@ -141,12 +141,21 @@ func (s *storage) CreateTemporary() (database.Storage, error) {
 func (s *storage) Open() error {
 	var err error
 	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
-	s.escapeCharacter = []byte("\\")
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec("CREATE TABLE IF NOT EXISTS " + s.tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )")
-	_, err = s.db.Exec("PRAGMA case_sensitive_like = true")
+
+	s.escapeCharacter = []byte("\\")
+
+	createTableFunc := func(tableName string) string {
+		return "CREATE TABLE IF NOT EXISTS " + tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )"
+	}
+	pragmaStmt := &statement{Stmt: "PRAGMA case_sensitive_like = true"}
+
+	s.db.Exec(createTableFunc(s.tableName))
+	if pragmaStmt != nil {
+		s.db.Exec(pragmaStmt.Stmt)
+	}
 
 	putStmt, err := s.NewStatement("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
 	if err != nil {
@@ -178,13 +187,15 @@ func (s *storage) Open() error {
 	}
 
 	s.stmts = statements{
-		Put:           putStmt,
-		Get:           getStmt,
-		CountPrefix:   countPrefixStmt,
-		FetchPrefix:   fetchPrefixStmt,
-		KeysPrefix:    keysPrefixStmt,
-		ProcessPrefix: processPrefixStmt,
-		Delete:        deleteStmt,
+		CreateTableFunc: createTableFunc,
+		Pragma:          pragmaStmt,
+		Put:             putStmt,
+		Get:             getStmt,
+		CountPrefix:     countPrefixStmt,
+		FetchPrefix:     fetchPrefixStmt,
+		KeysPrefix:      keysPrefixStmt,
+		ProcessPrefix:   processPrefixStmt,
+		Delete:          deleteStmt,
 	}
 
 	return nil

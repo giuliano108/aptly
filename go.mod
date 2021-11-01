@@ -17,7 +17,7 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-runewidth v0.0.2 // indirect
 	github.com/mattn/go-shellwords v1.0.2
-	github.com/mattn/go-sqlite3 v1.14.8 // indirect
+	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/mkrautz/goar v0.0.0-20150919110319-282caa8bd9da
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 	github.com/ncw/swift v1.0.30
