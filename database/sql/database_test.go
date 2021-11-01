@@ -85,6 +85,29 @@ func (s *SQLSuite) TestGetPut(c *C) {
 	c.Assert(result, DeepEquals, value)
 }
 
+func (s *SQLSuite) TestTemporaryDelete(c *C) {
+	var (
+		key   = []byte("key")
+		value = []byte("value")
+	)
+
+	err := s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	temp, err := s.db.CreateTemporary()
+	c.Assert(err, IsNil)
+
+	c.Check(s.db.HasPrefix([]byte(nil)), Equals, true)
+	c.Check(temp.HasPrefix([]byte(nil)), Equals, false)
+
+	err = temp.Put(key, value)
+	c.Assert(err, IsNil)
+	c.Check(temp.HasPrefix([]byte(nil)), Equals, true)
+
+	c.Assert(temp.Close(), IsNil)
+	c.Assert(temp.Drop(), IsNil)
+}
+
 func (s *SQLSuite) TestDelete(c *C) {
 	var (
 		key   = []byte("key")

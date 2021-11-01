@@ -3,6 +3,7 @@ package sql
 import (
 	databasesql "database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/aptly-dev/aptly/database"
 )
@@ -135,7 +136,25 @@ func (s *storage) OpenTransaction() (database.Transaction, error) {
 }
 
 func (s *storage) CreateTemporary() (database.Storage, error) {
-	panic("not implemented") // TODO: Implement
+	var sCopy storage
+	var err error
+	sCopy = *s
+	tableName := fmt.Sprintf("%s-%d", s.tableName, temporaryTableID.Get())
+	sCopy.tableName = tableName
+	fmt.Println(tableName)
+
+	_, err = s.db.Exec(sCopy.stmts.CreateTableFunc(s.tableName))
+	if err != nil {
+		return nil, err
+	}
+	if sCopy.stmts.Pragma != nil {
+		_, err = s.db.Exec(sCopy.stmts.Pragma.Stmt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &sCopy, nil
 }
 
 func (s *storage) Open() error {
@@ -152,9 +171,15 @@ func (s *storage) Open() error {
 	}
 	pragmaStmt := &statement{Stmt: "PRAGMA case_sensitive_like = true"}
 
-	s.db.Exec(createTableFunc(s.tableName))
+	_, err = s.db.Exec(createTableFunc(s.tableName))
+	if err != nil {
+		return err
+	}
 	if pragmaStmt != nil {
-		s.db.Exec(pragmaStmt.Stmt)
+		_, err = s.db.Exec(pragmaStmt.Stmt)
+		if err != nil {
+			return err
+		}
 	}
 
 	putStmt, err := s.NewStatement("INSERT INTO " + s.tableName + "(key, value) VALUES (?, ?)")
