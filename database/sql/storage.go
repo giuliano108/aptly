@@ -135,26 +135,32 @@ func (s *storage) OpenTransaction() (database.Transaction, error) {
 	return &transaction{t: t, stmts: s.stmts}, nil
 }
 
-func (s *storage) CreateTemporary() (database.Storage, error) {
-	var sCopy storage
+func (olds *storage) CreateTemporary() (database.Storage, error) {
+	var s storage
 	var err error
-	sCopy = *s
-	tableName := fmt.Sprintf("%s-%d", s.tableName, temporaryTableID.Get())
-	sCopy.tableName = tableName
-	fmt.Println(tableName)
+	s = *olds
+	tableName := fmt.Sprintf("%s_%d", olds.tableName, temporaryTableID.Get())
+	s.tableName = tableName
 
-	_, err = s.db.Exec(sCopy.stmts.CreateTableFunc(s.tableName))
+	//TODO: this has to be a "CREATE TEMP" statement
+	_, err = olds.db.Exec(s.stmts.CreateTableFunc(s.tableName))
 	if err != nil {
 		return nil, err
 	}
-	if sCopy.stmts.Pragma != nil {
-		_, err = s.db.Exec(sCopy.stmts.Pragma.Stmt)
+	if s.stmts.Pragma != nil {
+		_, err = olds.db.Exec(s.stmts.Pragma.Stmt)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &sCopy, nil
+	s.genStatements(s.tableName)
+	err = s.massPrepare()
+	if err != nil {
+		return nil, err
+	}
+
+	return &s, nil
 }
 
 func (s *storage) massPrepare() error {
