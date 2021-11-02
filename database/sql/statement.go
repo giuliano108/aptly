@@ -19,4 +19,5 @@ type statements struct {
 	KeysPrefix      *statement
 	ProcessPrefix   *statement
 	Delete          *statement
+	Drop            *statement
 }

@@ -139,10 +139,13 @@ func (olds *storage) CreateTemporary() (database.Storage, error) {
 	var s storage
 	var err error
 	s = *olds
-	tableName := fmt.Sprintf("%s_%d", olds.tableName, temporaryTableID.Get())
-	s.tableName = tableName
+	s.tableName = fmt.Sprintf("%s_%d", olds.tableName, temporaryTableID.Get())
 
-	//TODO: this has to be a "CREATE TEMP" statement
+	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = olds.db.Exec(s.stmts.CreateTableFunc(s.tableName))
 	if err != nil {
 		return nil, err
@@ -190,6 +193,7 @@ func (s *storage) genStatements(tableName string) {
 	s.stmts.KeysPrefix = &statement{Stmt: "SELECT key FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
 	s.stmts.ProcessPrefix = &statement{Stmt: "SELECT key, value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
 	s.stmts.Delete = &statement{Stmt: "DELETE FROM " + tableName + " WHERE key = ?"}
+	s.stmts.Drop = &statement{Stmt: "DROP TABLE " + tableName}
 }
 
 func (s *storage) Open() error {
@@ -240,7 +244,24 @@ func (s *storage) CompactDB() error {
 }
 
 func (s *storage) Drop() error {
-	panic("not implemented") // TODO: Implement
+	// goleveldb.storage.Drop() expects to be called after Close() .
+	// That's because LevelDB databases are just files on disk, "dropping" a DB
+	// means removing its associated files when nothing is accessing them.
+	// For a SQL DB this is not possible: you need an open database connection
+	// to be able to issue a "DROP TABLE"
+
+	// Here we reopen the connection if necessary
+	_, err := s.db.Exec(s.stmts.Drop.Stmt)
+	if err != nil && err.Error() == "sql: database is closed" {
+		s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
+		if err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		_, err = s.db.Exec(s.stmts.Drop.Stmt)
+	}
+	return err
 }
 
 // Check interface
