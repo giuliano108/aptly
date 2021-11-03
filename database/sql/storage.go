@@ -186,7 +186,7 @@ func (s *storage) massPrepare() error {
 }
 
 func (s *storage) genStatements(tableName string) {
-	s.stmts.Put = &statement{Stmt: "INSERT INTO " + tableName + " (key, value) VALUES (?, ?)"}
+	s.stmts.Put = &statement{Stmt: "INSERT OR REPLACE INTO " + tableName + " (key, value) VALUES (?, ?)"}
 	s.stmts.Get = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE key = ?"}
 	s.stmts.CountPrefix = &statement{Stmt: "SELECT COUNT (key) as count FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'"}
 	s.stmts.FetchPrefix = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
@@ -234,6 +234,9 @@ func (s *storage) Open() error {
 }
 
 func (s *storage) Close() error {
+	if s.db == nil {
+		return nil
+	}
 	return s.db.Close()
 }
 
