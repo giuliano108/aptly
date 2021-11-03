@@ -44,8 +44,10 @@ func (t *transaction) Commit() error {
 // Discard is safe to call after Commit(), it would be no-op
 func (t *transaction) Discard() {
 	err := t.t.Rollback()
-	if err != nil {
-		panic("error")
+	// The code can call Discard() after Commit(), so we have to account for that. See f.e.:
+	// https://github.com/aptly-dev/aptly/blob/ab2f5420c61749ac601e0d3cb245fb2362010aa8/deb/package_collection.go#L210
+	if err != nil && err.Error() != "sql: transaction has already been committed or rolled back" {
+		panic(err)
 	}
 }
 

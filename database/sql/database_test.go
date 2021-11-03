@@ -369,3 +369,16 @@ func (s *SQLSuite) TestCaseSensitivity(c *C) {
 
 	// TODO: need to test case sensitivity in transactions too (pragma might need to be repeated after a BEGIN?)
 }
+
+// Two subsequent Put() s, for the same key, update the value
+func (s *SQLSuite) TestUniqueConstraint(c *C) {
+	var key = []byte("key")
+	var err error
+	err = s.db.Put(key, []byte("value1"))
+	c.Assert(err, IsNil)
+	err = s.db.Put(key, []byte("value2"))
+	c.Assert(err, IsNil)
+	result, err := s.db.Get(key)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, []byte("value2"))
+}
