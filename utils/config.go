@@ -9,6 +9,8 @@ import (
 // ConfigStructure is structure of main configuration
 type ConfigStructure struct { // nolint: maligned
 	RootDir                string                           `json:"rootDir"`
+	UseSQLDB               bool                             `json:"useSQLDB"`
+	DBDataSourceName       string                           `json:"dbDataSourceName"`
 	DownloadConcurrency    int                              `json:"downloadConcurrency"`
 	DownloadLimit          int64                            `json:"downloadSpeedLimit"`
 	DownloadRetries        int                              `json:"downloadRetries"`
@@ -75,6 +77,8 @@ type SwiftPublishRoot struct {
 // Config is configuration for aptly, shared by all modules
 var Config = ConfigStructure{
 	RootDir:                filepath.Join(os.Getenv("HOME"), ".aptly"),
+	UseSQLDB:               false,
+	DBDataSourceName:       "",
 	DownloadConcurrency:    4,
 	DownloadLimit:          0,
 	DatabaseOpenAttempts:   -1,

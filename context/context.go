@@ -18,6 +18,7 @@ import (
 	"github.com/aptly-dev/aptly/console"
 	"github.com/aptly-dev/aptly/database"
 	"github.com/aptly-dev/aptly/database/goleveldb"
+	"github.com/aptly-dev/aptly/database/sql"
 	"github.com/aptly-dev/aptly/deb"
 	"github.com/aptly-dev/aptly/files"
 	"github.com/aptly-dev/aptly/http"
@@ -253,7 +254,11 @@ func (context *AptlyContext) _database() (database.Storage, error) {
 	if context.database == nil {
 		var err error
 
-		context.database, err = goleveldb.NewDB(context.dbPath())
+		if !context.config().UseSQLDB {
+			context.database, err = goleveldb.NewDB(context.dbPath())
+		} else {
+			context.database, err = sql.NewDB("sqlite3", context.config().DBDataSourceName, "aptly")
+		}
 		if err != nil {
 			return nil, fmt.Errorf("can't instantiate database: %s", err)
 		}
