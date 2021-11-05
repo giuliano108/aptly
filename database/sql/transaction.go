@@ -2,7 +2,6 @@ package sql
 
 import (
 	databasesql "database/sql"
-	"errors"
 
 	"github.com/aptly-dev/aptly/database"
 )
@@ -17,7 +16,7 @@ func (t *transaction) Get(key []byte) ([]byte, error) {
 	var value []byte
 	err := t.t.Stmt(t.stmts.Get.Prepared).QueryRow(key).Scan(&value)
 	if err == databasesql.ErrNoRows {
-		err = errors.New("key not found")
+		return nil, database.ErrNotFound
 	}
 	return value, err
 }

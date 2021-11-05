@@ -382,3 +382,24 @@ func (s *SQLSuite) TestUniqueConstraint(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(result, DeepEquals, []byte("value2"))
 }
+
+// Stricter version of TestGetPut
+func (s *SQLSuite) TestGetPutStrict(c *C) {
+	var (
+		key   = []byte("key")
+		value = []byte("value")
+	)
+
+	_, err := s.db.Get(key)
+	c.Assert(err, ErrorMatches, "key not found")
+	// "plain" TestGetPut doesn't have this assertion
+	// https://github.com/aptly-dev/aptly/blob/cbf0416d7e5070f58d0b40fc1be3e771b0baacf4/deb/local.go#L186
+	c.Assert(err == database.ErrNotFound, Equals, true)
+
+	err = s.db.Put(key, value)
+	c.Assert(err, IsNil)
+
+	result, err := s.db.Get(key)
+	c.Assert(err, IsNil)
+	c.Assert(result, DeepEquals, value)
+}

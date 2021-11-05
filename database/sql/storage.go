@@ -2,7 +2,6 @@ package sql
 
 import (
 	databasesql "database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/aptly-dev/aptly/database"
@@ -21,7 +20,7 @@ func (s *storage) Get(key []byte) ([]byte, error) {
 	var value []byte
 	err := s.stmts.Get.Prepared.QueryRow(key).Scan(&value)
 	if err == databasesql.ErrNoRows {
-		err = errors.New("key not found")
+		err = database.ErrNotFound
 	}
 	return value, err
 }
