@@ -58,6 +58,7 @@ func (s *ConfigSuite) TestSaveConfig(c *C) {
 		"{\n"+
 		"  \"rootDir\": \"/tmp/aptly\",\n"+
 		"  \"useSQLDB\": false,\n"+
+		"  \"dbDriverName\": \"\",\n"+
 		"  \"dbDataSourceName\": \"\",\n"+
 		"  \"downloadConcurrency\": 5,\n"+
 		"  \"downloadSpeedLimit\": 0,\n"+

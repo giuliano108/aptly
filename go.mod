@@ -11,6 +11,7 @@ require (
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gin-contrib/sse v0.0.0-20170109093832-22d885f9ecc7 // indirect
 	github.com/gin-gonic/gin v1.1.5-0.20170702092826-d459835d2b07
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/h2non/filetype v1.0.5
 	github.com/jlaffaye/ftp v0.0.0-20180404123514-2403248fa8cc // indirect
 	github.com/kjk/lzma v0.0.0-20161016003348-3fd93898850d

@@ -185,18 +185,32 @@ func (s *storage) massPrepare() error {
 }
 
 func (s *storage) genStatements(tableName string) {
-	s.stmts.Put = &statement{Stmt: "INSERT OR REPLACE INTO " + tableName + " (key, value) VALUES (?, ?)"}
-	s.stmts.Get = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE key = ?"}
-	s.stmts.CountPrefix = &statement{Stmt: "SELECT COUNT (key) as count FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'"}
-	s.stmts.FetchPrefix = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
-	s.stmts.KeysPrefix = &statement{Stmt: "SELECT key FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
-	s.stmts.ProcessPrefix = &statement{Stmt: "SELECT key, value FROM " + tableName + " WHERE KEY LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
-	s.stmts.Delete = &statement{Stmt: "DELETE FROM " + tableName + " WHERE key = ?"}
-	s.stmts.Drop = &statement{Stmt: "DROP TABLE " + tableName}
+	if s.driverName == "mysql" {
+		s.stmts.Put = &statement{Stmt: "REPLACE INTO " + tableName + " (`key`, `value`) VALUES (?, ?)"}
+		s.stmts.Get = &statement{Stmt: "SELECT `value` FROM " + tableName + " WHERE `key` = ?"}
+		s.stmts.CountPrefix = &statement{Stmt: "SELECT COUNT(`key`) as count FROM " + tableName + " WHERE `key` LIKE BINARY ? ESCAPE '\\\\'"}
+		s.stmts.FetchPrefix = &statement{Stmt: "SELECT `value` FROM " + tableName + " WHERE `key` LIKE BINARY ? ESCAPE '\\\\' ORDER BY `key`"}
+		s.stmts.KeysPrefix = &statement{Stmt: "SELECT `key` FROM " + tableName + " WHERE `key` LIKE BINARY ? ESCAPE '\\\\' ORDER BY `key`"}
+		s.stmts.ProcessPrefix = &statement{Stmt: "SELECT `key`, `value` FROM " + tableName + " WHERE `key` LIKE BINARY ? ESCAPE '\\\\' ORDER BY `key`"}
+		s.stmts.Delete = &statement{Stmt: "DELETE FROM " + tableName + " WHERE `key` = ?"}
+		s.stmts.Drop = &statement{Stmt: "DROP TABLE " + tableName}
+	} else {
+		// These work for "sqlite3"
+		s.stmts.Put = &statement{Stmt: "INSERT OR REPLACE INTO " + tableName + " (key, value) VALUES (?, ?)"}
+		s.stmts.Get = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE key = ?"}
+		s.stmts.CountPrefix = &statement{Stmt: "SELECT COUNT(key) as count FROM " + tableName + " WHERE key LIKE ? ESCAPE '" + string(s.escapeCharacter) + "'"}
+		s.stmts.FetchPrefix = &statement{Stmt: "SELECT value FROM " + tableName + " WHERE key LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+		s.stmts.KeysPrefix = &statement{Stmt: "SELECT key FROM " + tableName + " WHERE key LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+		s.stmts.ProcessPrefix = &statement{Stmt: "SELECT key, value FROM " + tableName + " WHERE key LIKE ? ESCAPE '" + string(s.escapeCharacter) + "' ORDER BY key"}
+		s.stmts.Delete = &statement{Stmt: "DELETE FROM " + tableName + " WHERE key = ?"}
+		s.stmts.Drop = &statement{Stmt: "DROP TABLE " + tableName}
+	}
 }
 
 func (s *storage) Open() error {
 	var err error
+	var createTableFunc func(string) string
+	var pragmaStmt *statement
 	s.db, err = databasesql.Open(s.driverName, s.dataSourceName)
 	if err != nil {
 		return err
@@ -204,10 +218,21 @@ func (s *storage) Open() error {
 
 	s.escapeCharacter = []byte("\\")
 
-	createTableFunc := func(tableName string) string {
-		return "CREATE TABLE IF NOT EXISTS " + tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )"
+	if s.driverName == "mysql" {
+		// MySQL MEDIUMBLOBs can be up to 16MB in size. BLOB can store 64KB max, which isn't enough
+		// for Aptly.
+		// TODO: will the 64kb limit and the 512 VARBINARY limit cause silent errors? Or will MySQL tell you
+		// if you're trying to insert a key longer than 512
+		createTableFunc = func(tableName string) string {
+			return "CREATE TABLE IF NOT EXISTS " + tableName + " ( `key` VARBINARY(512) NOT NULL PRIMARY KEY, `value` MEDIUMBLOB )"
+		}
+		pragmaStmt = &statement{Stmt: "SELECT 1 WHERE false"} // noop
+	} else {
+		createTableFunc = func(tableName string) string {
+			return "CREATE TABLE IF NOT EXISTS " + tableName + " ( key BLOB NOT NULL PRIMARY KEY, value BLOB )"
+		}
+		pragmaStmt = &statement{Stmt: "PRAGMA case_sensitive_like = true"}
 	}
-	pragmaStmt := &statement{Stmt: "PRAGMA case_sensitive_like = true"}
 
 	_, err = s.db.Exec(createTableFunc(s.tableName))
 	if err != nil {

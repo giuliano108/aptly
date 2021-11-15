@@ -10,6 +10,7 @@ import (
 type ConfigStructure struct { // nolint: maligned
 	RootDir                string                           `json:"rootDir"`
 	UseSQLDB               bool                             `json:"useSQLDB"`
+	DBDriverName           string                           `json:"dbDriverName"`
 	DBDataSourceName       string                           `json:"dbDataSourceName"`
 	DownloadConcurrency    int                              `json:"downloadConcurrency"`
 	DownloadLimit          int64                            `json:"downloadSpeedLimit"`
@@ -78,6 +79,7 @@ type SwiftPublishRoot struct {
 var Config = ConfigStructure{
 	RootDir:                filepath.Join(os.Getenv("HOME"), ".aptly"),
 	UseSQLDB:               false,
+	DBDriverName:           "",
 	DBDataSourceName:       "",
 	DownloadConcurrency:    4,
 	DownloadLimit:          0,

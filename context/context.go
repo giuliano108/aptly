@@ -257,7 +257,7 @@ func (context *AptlyContext) _database() (database.Storage, error) {
 		if !context.config().UseSQLDB {
 			context.database, err = goleveldb.NewDB(context.dbPath())
 		} else {
-			context.database, err = sql.NewDB("sqlite3", context.config().DBDataSourceName, "aptly")
+			context.database, err = sql.NewDB(context.config().DBDriverName, context.config().DBDataSourceName, "aptly")
 		}
 		if err != nil {
 			return nil, fmt.Errorf("can't instantiate database: %s", err)

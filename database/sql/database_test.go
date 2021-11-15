@@ -2,6 +2,8 @@ package sql_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -29,9 +31,23 @@ func (s *SQLSuite) SetUpTest(c *C) {
 	var err error
 
 	s.path = c.MkDir()
-	s.driverName = "sqlite3"
-	s.dataSourceName = fmt.Sprintf("file:%s/sql_test.db", s.path)
-	s.tableName = "testtable"
+	// The last path element of c.MkDir() is a number, it kind of corresponds to the goroutine running the test.
+	// We use it as a suffix for s.tableName, so that multiple tests running against the same database at the same
+	// time will each use a different table
+	suffix := filepath.Base(s.path)
+	val, ok := os.LookupEnv("APTLY_DB_DRIVERNAME")
+	if ok {
+		s.driverName = val
+	} else {
+		s.driverName = "sqlite3"
+	}
+	val, ok = os.LookupEnv("APTLY_DB_DATASOURCENAME")
+	if ok {
+		s.dataSourceName = val
+	} else {
+		s.dataSourceName = fmt.Sprintf("file:%s/sql_test.db", s.path)
+	}
+	s.tableName = "testtable" + suffix
 	s.db, err = sql.NewOpenDB(s.driverName, s.dataSourceName, s.tableName)
 	c.Assert(err, IsNil)
 }
