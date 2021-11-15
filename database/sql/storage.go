@@ -40,18 +40,18 @@ func (s *storage) FetchByPrefix(prefix []byte) [][]byte {
 	values := make([][]byte, 0, 20)
 	rows, err := s.stmts.FetchPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
-		panic("error")
+		panic(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var value []byte
 		if err := rows.Scan(&value); err != nil {
-			panic("error")
+			panic(err)
 		}
 		values = append(values, value)
 	}
 	if err = rows.Err(); err != nil {
-		panic("error")
+		panic(err)
 	}
 	return values
 }
@@ -61,7 +61,7 @@ func (s *storage) HasPrefix(prefix []byte) bool {
 	var count int
 	err := s.stmts.CountPrefix.Prepared.QueryRow(PrefixPattern(prefix, s.escapeCharacter)).Scan(&count)
 	if err != nil {
-		panic("error")
+		panic(err)
 	}
 	if count > 0 {
 		return true
@@ -75,14 +75,14 @@ func (s *storage) HasPrefix(prefix []byte) bool {
 func (s *storage) ProcessByPrefix(prefix []byte, proc database.StorageProcessor) error {
 	rows, err := s.stmts.ProcessPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
-		panic("error")
+		panic(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var key []byte
 		var value []byte
 		if err := rows.Scan(&key, &value); err != nil {
-			panic("error")
+			panic(err)
 		}
 		err := proc(key, value)
 		if err != nil {
@@ -90,7 +90,7 @@ func (s *storage) ProcessByPrefix(prefix []byte, proc database.StorageProcessor)
 		}
 	}
 	if err = rows.Err(); err != nil {
-		panic("error")
+		panic(err)
 	}
 
 	return nil
@@ -101,18 +101,18 @@ func (s *storage) KeysByPrefix(prefix []byte) [][]byte {
 	keys := make([][]byte, 0, 20)
 	rows, err := s.stmts.KeysPrefix.Prepared.Query(PrefixPattern(prefix, s.escapeCharacter))
 	if err != nil {
-		panic("error")
+		panic(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var key []byte
 		if err := rows.Scan(&key); err != nil {
-			panic("error")
+			panic(err)
 		}
 		keys = append(keys, key)
 	}
 	if err = rows.Err(); err != nil {
-		panic("error")
+		panic(err)
 	}
 	return keys
 }
@@ -120,7 +120,7 @@ func (s *storage) KeysByPrefix(prefix []byte) [][]byte {
 func (s *storage) CreateBatch() database.Batch {
 	t, err := s.db.Begin()
 	if err != nil {
-		panic("error")
+		panic(err)
 	}
 	return &batch{t: &transaction{t: t, stmts: s.stmts}}
 }

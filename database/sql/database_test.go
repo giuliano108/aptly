@@ -367,7 +367,19 @@ func (s *SQLSuite) TestCaseSensitivity(c *C) {
 	_ = s.db.Put([]byte("keylower"), value)
 	c.Check(s.db.KeysByPrefix([]byte("KEY")), DeepEquals, [][]byte{[]byte("KEYUPPER")})
 
-	// TODO: need to test case sensitivity in transactions too (pragma might need to be repeated after a BEGIN?)
+	// same test, in a transaction (things like "PRAGMA case_sensitive_like = true" might
+	// need to be repeated after a BEGIN)
+	transaction, err := s.db.OpenTransaction()
+	c.Assert(err, IsNil)
+
+	// Put/Get are case sensitive.
+	err = transaction.Put([]byte("TSOMEKEY"), value)
+	c.Assert(err, IsNil)
+
+	_, err = transaction.Get([]byte("tsomekey"))
+	c.Assert(err, ErrorMatches, "key not found")
+
+	// Transactions don't support Prefixed operations, so no KeysByPrefix test needed
 }
 
 // Two subsequent Put() s, for the same key, update the value
@@ -383,11 +395,10 @@ func (s *SQLSuite) TestUniqueConstraint(c *C) {
 	c.Assert(result, DeepEquals, []byte("value2"))
 }
 
-// Stricter version of TestGetPut
+// Similar to TestGetPut but stricter about the expected errors
 func (s *SQLSuite) TestGetPutStrict(c *C) {
 	var (
-		key   = []byte("key")
-		value = []byte("value")
+		key = []byte("key")
 	)
 
 	_, err := s.db.Get(key)
@@ -396,10 +407,9 @@ func (s *SQLSuite) TestGetPutStrict(c *C) {
 	// https://github.com/aptly-dev/aptly/blob/cbf0416d7e5070f58d0b40fc1be3e771b0baacf4/deb/local.go#L186
 	c.Assert(err == database.ErrNotFound, Equals, true)
 
-	err = s.db.Put(key, value)
+	// same test, in a transaction
+	transaction, err := s.db.OpenTransaction()
 	c.Assert(err, IsNil)
-
-	result, err := s.db.Get(key)
-	c.Assert(err, IsNil)
-	c.Assert(result, DeepEquals, value)
+	_, err = transaction.Get(key)
+	c.Assert(err == database.ErrNotFound, Equals, true)
 }
